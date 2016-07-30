@@ -30,15 +30,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Dummy inspection for configuring the PyLint checker. The checking itself is performed by
- * PyLintExternalAnnotator.
+ * Dummy inspection for configuring the Pylint checker. The checking itself is performed by
+ * PylintExternalAnnotator.
  *
  * @author yole, Eric
  */
-public class PyLintInspection extends PyInspection {
+public class PylintInspection extends PyInspection {
     public List<String> ignoredErrors = new ArrayList<String>();
-    public static final String INSPECTION_SHORT_NAME = "PyLintInspection";
-    public static final Key<PyLintInspection> KEY = Key.create(INSPECTION_SHORT_NAME);
+    public static final String INSPECTION_SHORT_NAME = "PylintInspection";
+    public static final Key<PylintInspection> KEY = Key.create(INSPECTION_SHORT_NAME);
 
     @Override
     public JComponent createOptionsPanel() {

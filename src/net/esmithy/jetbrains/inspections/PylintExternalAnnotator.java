@@ -78,8 +78,8 @@ import java.util.regex.Pattern;
 /**
  * @author yole, Eric
  */
-public class PyLintExternalAnnotator extends ExternalAnnotator<PyLintExternalAnnotator.State, PyLintExternalAnnotator.Results> {
-    private static final Logger LOG = Logger.getInstance(PyLintExternalAnnotator.class);
+public class PylintExternalAnnotator extends ExternalAnnotator<PylintExternalAnnotator.State, PylintExternalAnnotator.Results> {
+    private static final Logger LOG = Logger.getInstance(PylintExternalAnnotator.class);
     private static final Pattern E303_LINE_COUNT_PATTERN = Pattern.compile(".*\\((\\d+)\\)$");
 
     public static class Problem {
@@ -148,11 +148,11 @@ public class PyLintExternalAnnotator extends ExternalAnnotator<PyLintExternalAnn
             return null;
         }
         final InspectionProfile profile = InspectionProjectProfileManager.getInstance(file.getProject()).getInspectionProfile();
-        final HighlightDisplayKey key = HighlightDisplayKey.find(PyLintInspection.INSPECTION_SHORT_NAME);
+        final HighlightDisplayKey key = HighlightDisplayKey.find(PylintInspection.INSPECTION_SHORT_NAME);
         if (!profile.isToolEnabled(key)) {
             return null;
         }
-        final PyLintInspection inspection = (PyLintInspection)profile.getUnwrappedTool(PyLintInspection.KEY.toString(), file);
+        final PylintInspection inspection = (PylintInspection)profile.getUnwrappedTool(PylintInspection.KEY.toString(), file);
         final CodeStyleSettings currentSettings = CodeStyleSettingsManager.getInstance(file.getProject()).getCurrentSettings();
 
         final List<String> ignoredErrors = Lists.newArrayList(inspection.ignoredErrors);
@@ -294,7 +294,7 @@ public class PyLintExternalAnnotator extends ExternalAnnotator<PyLintExternalAnn
                     annotation.registerUniversalFix(new ReformatFix(), null, null);
                 }
                 annotation.registerFix(new IgnoreErrorFix(problem.myCode));
-                annotation.registerFix(new CustomEditInspectionToolsSettingsAction(HighlightDisplayKey.find(PyLintInspection.INSPECTION_SHORT_NAME),
+                annotation.registerFix(new CustomEditInspectionToolsSettingsAction(HighlightDisplayKey.find(PylintInspection.INSPECTION_SHORT_NAME),
                         new Computable<String>() {
                             @Override
                             public String compute() {
@@ -409,7 +409,7 @@ public class PyLintExternalAnnotator extends ExternalAnnotator<PyLintExternalAnn
             InspectionProjectProfileManager.getInstance(project).getInspectionProfile(file).modifyProfile(new Consumer<ModifiableModel>() {
                 @Override
                 public void consume(ModifiableModel model) {
-                    PyLintInspection tool = (PyLintInspection)model.getUnwrappedTool(PyLintInspection.INSPECTION_SHORT_NAME, file);
+                    PylintInspection tool = (PylintInspection)model.getUnwrappedTool(PylintInspection.INSPECTION_SHORT_NAME, file);
                     if (!tool.ignoredErrors.contains(myCode)) {
                         tool.ignoredErrors.add(myCode);
                     }

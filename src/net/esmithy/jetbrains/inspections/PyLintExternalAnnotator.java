@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.jetbrains.python.validation;
+package net.esmithy.jetbrains.inspections;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -57,7 +57,6 @@ import com.jetbrains.python.PythonHelper;
 import com.jetbrains.python.PythonLanguage;
 import com.jetbrains.python.codeInsight.imports.OptimizeImportsQuickFix;
 import com.jetbrains.python.formatter.PyCodeStyleSettings;
-import com.jetbrains.python.inspections.PyPep8Inspection;
 import com.jetbrains.python.inspections.quickfix.ReformatFix;
 import com.jetbrains.python.inspections.quickfix.RemoveTrailingBlankLinesFix;
 import com.jetbrains.python.psi.*;
@@ -77,10 +76,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * @author yole
+ * @author yole, Eric
  */
-public class Pep8ExternalAnnotator extends ExternalAnnotator<Pep8ExternalAnnotator.State, Pep8ExternalAnnotator.Results> {
-    private static final Logger LOG = Logger.getInstance(Pep8ExternalAnnotator.class);
+public class PyLintExternalAnnotator extends ExternalAnnotator<PyLintExternalAnnotator.State, PyLintExternalAnnotator.Results> {
+    private static final Logger LOG = Logger.getInstance(PyLintExternalAnnotator.class);
     private static final Pattern E303_LINE_COUNT_PATTERN = Pattern.compile(".*\\((\\d+)\\)$");
 
     public static class Problem {
@@ -149,11 +148,11 @@ public class Pep8ExternalAnnotator extends ExternalAnnotator<Pep8ExternalAnnotat
             return null;
         }
         final InspectionProfile profile = InspectionProjectProfileManager.getInstance(file.getProject()).getInspectionProfile();
-        final HighlightDisplayKey key = HighlightDisplayKey.find(PyPep8Inspection.INSPECTION_SHORT_NAME);
+        final HighlightDisplayKey key = HighlightDisplayKey.find(PyLintInspection.INSPECTION_SHORT_NAME);
         if (!profile.isToolEnabled(key)) {
             return null;
         }
-        final PyPep8Inspection inspection = (PyPep8Inspection)profile.getUnwrappedTool(PyPep8Inspection.KEY.toString(), file);
+        final PyLintInspection inspection = (PyLintInspection)profile.getUnwrappedTool(PyLintInspection.KEY.toString(), file);
         final CodeStyleSettings currentSettings = CodeStyleSettingsManager.getInstance(file.getProject()).getCurrentSettings();
 
         final List<String> ignoredErrors = Lists.newArrayList(inspection.ignoredErrors);
@@ -171,7 +170,7 @@ public class Pep8ExternalAnnotator extends ExternalAnnotator<Pep8ExternalAnnotat
     }
 
     private static void reportMissingInterpreter() {
-        LOG.info("Found no suitable interpreter to run pep8.py. Available interpreters are: [");
+        LOG.info("Found no suitable interpreter to run pylint.py. Available interpreters are: [");
         List<Sdk> allSdks = PythonSdkType.getAllSdks();
         Collections.sort(allSdks, PreferredSdkComparator.INSTANCE);
         for (Sdk sdk : allSdks) {
@@ -201,7 +200,7 @@ public class Pep8ExternalAnnotator extends ExternalAnnotator<Pep8ExternalAnnotat
 
         Results results = new Results(collectedInfo.level);
         if (output.isTimeout()) {
-            LOG.info("Timeout running pep8.py");
+            LOG.info("Timeout running pylint.py");
         }
         else if (output.getStderrLines().isEmpty()) {
             for (String line : output.getStdoutLines()) {
@@ -212,7 +211,7 @@ public class Pep8ExternalAnnotator extends ExternalAnnotator<Pep8ExternalAnnotat
             }
         }
         else if (((ApplicationInfoImpl) ApplicationInfo.getInstance()).isEAP()) {
-            LOG.info("Error running pep8.py: " + output.getStderr());
+            LOG.info("Error running pylint.py: " + output.getStderr());
         }
         return results;
     }
@@ -258,7 +257,7 @@ public class Pep8ExternalAnnotator extends ExternalAnnotator<Pep8ExternalAnnotat
             if (problemElement != null) {
                 TextRange problemRange = problemElement.getTextRange();
                 // Multi-line warnings are shown only in the gutter and it's not the desired behavior from the usability point of view.
-                // So we register it only on that line where pep8.py found the problem originally.
+                // So we register it only on that line where pylint.py found the problem originally.
                 if (crossesLineBoundary(document, text, problemRange)) {
                     final int lineEndOffset;
                     if (document != null) {
@@ -295,7 +294,7 @@ public class Pep8ExternalAnnotator extends ExternalAnnotator<Pep8ExternalAnnotat
                     annotation.registerUniversalFix(new ReformatFix(), null, null);
                 }
                 annotation.registerFix(new IgnoreErrorFix(problem.myCode));
-                annotation.registerFix(new CustomEditInspectionToolsSettingsAction(HighlightDisplayKey.find(PyPep8Inspection.INSPECTION_SHORT_NAME),
+                annotation.registerFix(new CustomEditInspectionToolsSettingsAction(HighlightDisplayKey.find(PyLintInspection.INSPECTION_SHORT_NAME),
                         new Computable<String>() {
                             @Override
                             public String compute() {
@@ -376,7 +375,7 @@ public class Pep8ExternalAnnotator extends ExternalAnnotator<Pep8ExternalAnnotat
             return new Problem(line, column, m.group(3), m.group(4));
         }
         if (((ApplicationInfoImpl) ApplicationInfo.getInstance()).isEAP()) {
-            LOG.info("Failed to parse problem line from pep8.py: " + s);
+            LOG.info("Failed to parse problem line from pylint.py: " + s);
         }
         return null;
     }
@@ -410,7 +409,7 @@ public class Pep8ExternalAnnotator extends ExternalAnnotator<Pep8ExternalAnnotat
             InspectionProjectProfileManager.getInstance(project).getInspectionProfile(file).modifyProfile(new Consumer<ModifiableModel>() {
                 @Override
                 public void consume(ModifiableModel model) {
-                    PyPep8Inspection tool = (PyPep8Inspection)model.getUnwrappedTool(PyPep8Inspection.INSPECTION_SHORT_NAME, file);
+                    PyLintInspection tool = (PyLintInspection)model.getUnwrappedTool(PyLintInspection.INSPECTION_SHORT_NAME, file);
                     if (!tool.ignoredErrors.contains(myCode)) {
                         tool.ignoredErrors.add(myCode);
                     }

@@ -13,13 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.jetbrains.python.inspections;
+package net.esmithy.jetbrains.inspections;
 
 import com.intellij.codeInspection.*;
 import com.intellij.codeInspection.ui.ListEditForm;
 import com.intellij.openapi.util.Key;
 import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.PsiFile;
+import com.jetbrains.python.inspections.PyInspection;
 import com.jetbrains.python.validation.Pep8ExternalAnnotator;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -29,15 +30,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Dummy inspection for configuring the PEP8 checker. The checking itself is performed by
- * Pep8ExternalAnnotator.
+ * Dummy inspection for configuring the PyLint checker. The checking itself is performed by
+ * PyLintExternalAnnotator.
  *
- * @author yole
+ * @author yole, Eric
  */
-public class PyPep8Inspection extends PyInspection {
+public class PyLintInspection extends PyInspection {
     public List<String> ignoredErrors = new ArrayList<String>();
-    public static final String INSPECTION_SHORT_NAME = "PyPep8Inspection";
-    public static final Key<PyPep8Inspection> KEY = Key.create(INSPECTION_SHORT_NAME);
+    public static final String INSPECTION_SHORT_NAME = "PyLintInspection";
+    public static final Key<PyLintInspection> KEY = Key.create(INSPECTION_SHORT_NAME);
 
     @Override
     public JComponent createOptionsPanel() {

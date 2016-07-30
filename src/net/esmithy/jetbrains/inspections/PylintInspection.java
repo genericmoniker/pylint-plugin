@@ -21,7 +21,6 @@ import com.intellij.openapi.util.Key;
 import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.PsiFile;
 import com.jetbrains.python.inspections.PyInspection;
-import com.jetbrains.python.validation.Pep8ExternalAnnotator;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -51,12 +50,12 @@ public class PylintInspection extends PyInspection {
     public PsiElementVisitor buildVisitor(@NotNull ProblemsHolder holder,
                                           boolean isOnTheFly,
                                           @NotNull LocalInspectionToolSession session) {
-        return new ExternalAnnotatorInspectionVisitor(holder, new Pep8ExternalAnnotator(), isOnTheFly);
+        return new ExternalAnnotatorInspectionVisitor(holder, new PylintExternalAnnotator(), isOnTheFly);
     }
 
     @Nullable
     @Override
     public ProblemDescriptor[] checkFile(@NotNull PsiFile file, @NotNull InspectionManager manager, boolean isOnTheFly) {
-        return ExternalAnnotatorInspectionVisitor.checkFileWithExternalAnnotator(file, manager, isOnTheFly, new Pep8ExternalAnnotator());
+        return ExternalAnnotatorInspectionVisitor.checkFileWithExternalAnnotator(file, manager, isOnTheFly, new PylintExternalAnnotator());
     }
 }

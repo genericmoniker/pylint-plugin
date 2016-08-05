@@ -69,6 +69,10 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -183,27 +187,54 @@ public class PylintExternalAnnotator extends ExternalAnnotator<PylintExternalAnn
     @Override
     public Results doAnnotate(State collectedInfo) {
         if (collectedInfo == null) return null;
+
+        // Unlike pep8, pylint doesn't support running against stdin, so we'll write a temp file instead.
+        // For this to work, the containing directory must be in the Python path, which we'll do below.
+        Path source = writeSourceFile(collectedInfo.fileText);
+        if (source == null) return null;
+
+        // python -m pylint
+        ArrayList<String> command = Lists.newArrayList();
+        command.add(collectedInfo.interpreterPath);
+        command.add("-m");
+        command.add("pylint");
+
         ArrayList<String> options = Lists.newArrayList();
 
         if (collectedInfo.ignoredErrors.size() > 0) {
-            options.add("--ignore=" + StringUtil.join(collectedInfo.ignoredErrors, ","));
+            options.add("--disable=" + StringUtil.join(collectedInfo.ignoredErrors, ","));
         }
-        options.add("--max-line-length=" + collectedInfo.margin);
-        options.add("-");
+        options.add("--msg-template='{line}:{column}:{msg_id}:{msg}'");
+        options.add("--reports=n");
 
-        GeneralCommandLine cmd = PythonHelper.PEP8.newCommandLine(collectedInfo.interpreterPath, options);
+        // This is a pep8 option... may be a way to do this for pylint?
+        // options.add("--max-line-length=" + collectedInfo.margin);
+
+        options.add(source.toString());
+        command.addAll(options);
+
+        GeneralCommandLine cmd = new GeneralCommandLine(command);
 
         ProcessOutput output = PySdkUtil.getProcessOutput(cmd, new File(collectedInfo.interpreterPath).getParent(),
-                ImmutableMap.of("PYTHONBUFFERED", "1"),
-                10000,
-                collectedInfo.fileText.getBytes(), false);
+                ImmutableMap.of(
+                        "PYTHONBUFFERED", "1",
+                        "PYTHONPATH", source.getParent().toString()
+                ),
+                10000);
+
+        try {
+            Files.delete(source);
+        } catch (IOException e) {
+            LOG.error("Error deleting temp file", e);
+        }
 
         Results results = new Results(collectedInfo.level);
         if (output.isTimeout()) {
-            LOG.info("Timeout running pylint.py");
+            LOG.info("Timeout running pylint");
         }
-        else if (output.getStderrLines().isEmpty()) {
+        else if (output.getExitCode() != 32) {  /* 32 is a pylint usage/internal error */
             for (String line : output.getStdoutLines()) {
+                if (line.startsWith("*************")) continue;
                 final Problem problem = parseProblem(line);
                 if (problem != null) {
                     results.problems.add(problem);
@@ -211,9 +242,20 @@ public class PylintExternalAnnotator extends ExternalAnnotator<PylintExternalAnn
             }
         }
         else if (((ApplicationInfoImpl) ApplicationInfo.getInstance()).isEAP()) {
-            LOG.info("Error running pylint.py: " + output.getStderr());
+            LOG.info("Error running pylint: " + output.getStderr());
         }
         return results;
+    }
+
+    private Path writeSourceFile(@NotNull String text) {
+        try {
+            final Path path = Files.createTempFile("lint_module", ".py");
+            Files.write(path, text.getBytes());
+            return path;
+        } catch (IOException e) {
+            LOG.error("Error writing temp file", e);
+            return null;
+        }
     }
 
     @Override
@@ -274,7 +316,7 @@ public class PylintExternalAnnotator extends ExternalAnnotator<PylintExternalAnn
                 }
                 final Annotation annotation;
                 final boolean inInternalMode = ApplicationManager.getApplication().isInternal();
-                final String message = "PEP 8: " + (inInternalMode ? problem.myCode + " " : "") + problem.myDescription;
+                final String message = (inInternalMode ? problem.myCode + " " : "") + problem.myDescription;
                 if (annotationResult.level == HighlightDisplayLevel.ERROR) {
                     annotation = holder.createErrorAnnotation(problemRange, message);
                 }
@@ -364,7 +406,23 @@ public class PylintExternalAnnotator extends ExternalAnnotator<PylintExternalAnn
         return false;
     }
 
-    private static final Pattern PROBLEM_PATTERN = Pattern.compile(".+:(\\d+):(\\d+): ([EW]\\d{3}) (.+)");
+    private static final Pattern PROBLEM_PATTERN = Pattern.compile("(\\d+):(\\d+):(.\\d+):(.+)");
+
+    /*
+************* Module lint_module7035251273351711164
+  1: 0:C:C0111:Missing module docstring
+  8: 0:C:C0103:Invalid constant name "count"
+  9: 0:C:C0103:Invalid constant name "url"
+ 11: 0:C:C0103:Invalid constant name "nothing"
+ 13: 0:C:C0103:Invalid constant name "p"
+ 16: 4:C:C0103:Invalid constant name "r"
+ 18:24:E:E1101:Instance of 'LookupDict' has no 'ok' member
+ 22: 4:C:C0103:Invalid constant name "match"
+ 24: 8:C:C0103:Invalid constant name "nothing"
+  5: 0:C:C0411:standard import "import re" comes before "import requests"
+
+https://pylint.readthedocs.io/en/latest/run.html
+     */
 
     @Nullable
     private static Problem parseProblem(String s) {
